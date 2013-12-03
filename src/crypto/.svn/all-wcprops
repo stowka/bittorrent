@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/itp-1011-36/!svn/ver/37/trunk/itp/src/crypto
+END
+KeyGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/KeyGenerator.java
+END
+RSAInputStream.java
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/RSAInputStream.java
+END
+RSAOutputStream.java
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/RSAOutputStream.java
+END
+KeyPair.java
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/KeyPair.java
+END
+SymmetricInputStream.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/SymmetricInputStream.java
+END
+SymmetricOutputStream.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/itp-1011-36/!svn/ver/38/trunk/itp/src/crypto/SymmetricOutputStream.java
+END

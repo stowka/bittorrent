@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding
+END
+BEncoder.java
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding/BEncoder.java
+END
+BEValue.java
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding/BEValue.java
+END
+BDecoder.java
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding/BDecoder.java
+END
+InvalidBEncodingException.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding/InvalidBEncodingException.java
+END
+package.html
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/bencoding/package.html
+END

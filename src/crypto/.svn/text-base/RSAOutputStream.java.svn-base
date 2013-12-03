@@ -1,0 +1,36 @@
+package crypto;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.math.BigInteger;
+
+public class RSAOutputStream extends OutputStream {
+	private KeyPair keyPair;
+	private DataOutputStream os;
+	
+	public RSAOutputStream(KeyPair keyPair, DataOutputStream os) {
+		this.keyPair = keyPair;
+		this.os = os;
+	}
+	
+	@Override
+	public void write(int b) throws IOException {
+		BigInteger bi = BigInteger.valueOf(b);
+		keyPair.encrypt(bi);
+		os.write(bi.toByteArray());
+	}
+
+	@Override
+	public void close() throws IOException {
+		os.close();
+	}
+
+	@Override
+	public void flush() throws IOException {
+		os.flush();
+	}
+	
+	
+
+}

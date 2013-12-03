@@ -1,0 +1,76 @@
+package gui;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.border.Border;
+
+import bencoding.BEValue;
+import bencoding.InvalidBEncodingException;
+
+import torrent.MetaInfo;
+
+@SuppressWarnings("serial")
+public class InfoTorrent extends JPanel {
+	private JTextArea textMetainfo;
+	// private JTextArea textTitle;
+	private Border border;
+	private String author, comment, name, length;
+	private long time;
+	private String timeString, text;
+	private Date timeDate;
+	private List<String> trackers;
+
+	public InfoTorrent(Color bg) {
+		this.setBackground(bg);
+		this.trackers = new ArrayList<String>();
+		this.border = BorderFactory.createTitledBorder("MetaInfo");
+		this.textMetainfo = new JTextArea("No torrent added");
+		this.textMetainfo.setBackground(bg);
+		this.textMetainfo.setForeground(Color.BLACK);
+		this.textMetainfo.setFont(new Font("TimesRoman", Font.ITALIC, 13));
+		this.textMetainfo.setBorder(border);
+		this.textMetainfo.setEditable(false);
+		this.textMetainfo.setFocusable(false);
+		this.textMetainfo.setRows(30);
+		this.textMetainfo.setColumns(40);
+		
+		this.add(textMetainfo);
+	}
+
+	public void addTorrent(String path) {
+		MetaInfo metainfo = new MetaInfo(path);
+		this.author = "Author :\n" + metainfo.getAuthor();
+		this.time = metainfo.getTime();
+		this.timeDate = new Date(this.time);
+		this.timeString = "Creation date :\n" + this.timeDate.toString();
+		this.comment = "\n\n" + metainfo.getComment();
+		this.name = "Name :\n" + metainfo.getName();
+		this.length = "Pieces :\n" + metainfo.getLength();
+		this.trackers.removeAll(trackers);
+		if (metainfo.getAnnounceList() != null) {
+			for (BEValue b : metainfo.getAnnounceList()) {
+				try {
+					this.trackers.add(b.getList().get(0).getString());
+				} catch (InvalidBEncodingException e) {
+					System.out.println("Invalid Bendcoding");
+				}
+			}
+		} else {
+			this.trackers.add(metainfo.getAnnounce());
+		}
+		this.text = this.name + "\n" + this.author + "\n" + this.timeString + "\n"
+				+ this.length + "\n" + this.comment + "\n\nTrackers :\n";
+		for (String s : this.trackers) {
+			this.text += s + "\n";
+		}
+		this.textMetainfo.setText(text);
+	}
+
+}

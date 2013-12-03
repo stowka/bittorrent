@@ -1,0 +1,220 @@
+package gui;
+
+import java.awt.Color;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextField;
+import javax.swing.JTextPane;
+import javax.swing.JToolBar;
+import javax.swing.border.Border;
+
+import torrent.Torrent;
+import torrent.peer.Peer;
+
+@SuppressWarnings("serial")
+public class Download extends JPanel implements Runnable, ActionListener {
+	private JProgressBar torrentProgress, pieceProgress;
+	private JTextPane textTorrent;
+	private JTextPane addrPeer, ipPeer, portPeer;
+	private JPanel duspeed, peerPanel;
+	private JTextField downloadSpeed, uploadSpeed;
+	private Torrent torrent;
+	private List<Peer> peers;
+	private Border border;
+	private int avancement, length, size;
+	private String s;
+	private double dSpeed/*, uSpeed*/;
+	private boolean loading;
+	private JToolBar toolBar;
+	private JButton load, stop;
+
+	public Download(Color bg, Torrent torrent) {
+		// EVERY DOWNLOAD (with this builder) IS CREATED WHEN A TORRENT IS ADDED
+		this.toolBar = new JToolBar();
+		ImageIcon loadIcon = new ImageIcon("data/icons/load.png");
+		ImageIcon stopIcon = new ImageIcon("data/icons/stop.png");
+		this.load = new JButton(loadIcon);
+		this.load.setBackground(bg);
+		this.load.addActionListener(this);
+		this.stop = new JButton(stopIcon);
+		this.stop.setBackground(bg);
+		this.stop.addActionListener(this);
+		this.toolBar.add(this.load);
+		this.toolBar.add(this.stop);
+		this.toolBar.setBackground(bg);
+		this.toolBar.setFloatable(false);
+		
+		this.loading = false;
+		this.s = "";
+		this.avancement = 0;
+		this.setBackground(bg);
+		this.border = BorderFactory.createEtchedBorder();
+		this.torrent = torrent;
+		this.peers = torrent.getPeers();
+		this.length = torrent.getMetaInfo().getLength();
+		this.dSpeed = 0.0;
+
+		this.downloadSpeed = new JTextField("Download : " + dSpeed
+				+ " " + s + "byte/s");
+		this.downloadSpeed.setEditable(false);
+		this.downloadSpeed.setFocusable(false);
+		this.uploadSpeed = new JTextField("Upload : " + getUploadSpeed()
+				+ " byte/s");
+		this.uploadSpeed.setEditable(false);
+		this.uploadSpeed.setFocusable(false);
+
+		this.textTorrent = new JTextPane();
+		this.textTorrent.setText("Torrent progression :");
+		this.textTorrent.setEditable(false);
+		this.textTorrent.setFocusable(false);
+		this.textTorrent.setBackground(bg);
+
+		this.duspeed = new JPanel();
+		this.duspeed.setLayout(new GridLayout(1, 2));
+		this.duspeed.add(downloadSpeed);
+		this.duspeed.add(uploadSpeed);
+		this.duspeed.setBackground(bg);
+
+		this.torrentProgress = new JProgressBar();
+		this.torrentProgress.setFocusable(false);
+		this.pieceProgress = new JProgressBar();
+		this.pieceProgress.setFocusable(false);
+
+		this.avancement = (int) torrent.getPieceManager().getAvancement();
+
+		this.torrentProgress = new JProgressBar(0, 100);
+		this.torrentProgress.setValue(avancement);
+		this.torrentProgress.setStringPainted(true);
+
+		this.addrPeer = new JTextPane();
+		this.ipPeer = new JTextPane();
+		this.portPeer = new JTextPane();
+		this.peerPanel = new JPanel();
+		this.peerPanel.setLayout(new GridLayout(1, 3));
+
+		this.setLayout(new GridLayout(16, 1));
+		this.setBorder(border);
+		this.add(toolBar);
+		this.add(textTorrent);
+		this.add(torrentProgress);
+		this.add(duspeed);
+		for (int i = 0; i < peers.size(); i++) {
+			this.addrPeer.setText(this.peers.get(i).getId());
+			this.ipPeer.setText(this.peers.get(i).getIp().toString());
+			this.portPeer.setText(this.peers.get(i).getPort() + "");
+			this.peerPanel.add(addrPeer);
+			this.peerPanel.add(ipPeer);
+			this.peerPanel.add(portPeer);
+			this.add(peerPanel);
+		}
+	}
+
+	private void start() {
+		Thread thread = new Thread(this);
+		thread.start();
+	}
+
+	public Download(Color bg) {
+		// NO TORRENT
+		this.setBackground(bg);
+		this.textTorrent = new JTextPane();
+		this.textTorrent.setText("No torrent is loaded");
+		this.textTorrent.setEditable(false);
+		this.textTorrent.setFocusable(false);
+		this.textTorrent.setBackground(bg);
+
+		this.torrentProgress = new JProgressBar();
+		this.torrentProgress.setFocusable(false);
+		this.pieceProgress = new JProgressBar();
+		this.pieceProgress.setFocusable(false);
+
+		this.torrentProgress = new JProgressBar(0, 100);
+		this.torrentProgress.setValue(0);
+		this.torrentProgress.setStringPainted(true);
+
+		this.setLayout(new GridLayout(10, 1));
+		this.add(textTorrent);
+		this.add(torrentProgress);
+	}
+
+	public String getTitle() {
+		return this.torrent.getMetaInfo().getName();
+	}
+
+	@Override
+	public void run() {
+		while (loading) {
+			this.avancement = (int) torrent.getPieceManager().getAvancement();
+			setDownloadSpeed();
+			if (dSpeed != 0) {
+				this.downloadSpeed.setText("Download : " + convertSpeed(dSpeed) + " " + s
+						+ "byte/s");
+			}
+			this.torrentProgress.setValue(avancement);
+			if (avancement == 100) {
+				return;
+			}
+		}
+	}
+
+	public void setDownloadSpeed() {
+		this.length = this.size;
+		this.size = this.torrent.getPieceManager().getAllPiecesSize();
+		this.dSpeed = Math.abs((double) ((length - size) * 32));
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public double getUploadSpeed() {
+		return 0.0;
+	}
+
+	public double convertSpeed(double speed) {
+		if (speed > MEGA) {
+			System.out.println("speed > megab");
+			this.s = "M";
+			return speed / MEGA;
+		} else if (speed > KILO) {
+			System.out.println("speed > kilob");
+			this.s = "k";
+			return speed / KILO;
+		} else {
+			System.out.println("speed = bytes");
+			return speed;
+		}
+	}
+
+	public double troncDouble(double number) {
+		number *= 10000;
+		int numberInt = (int) number;
+		return (double) (numberInt / 10000);
+	}
+
+	private final int MEGA = 1048576;
+	private final int KILO = 1024;
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		Object source = e.getSource();
+		if (source.equals(this.load)) {
+			this.loading = true;
+			this.torrent.massAnnounce();
+			this.start();
+		} else if (source.equals(this.stop)) {
+			this.loading = false;
+		}
+		
+	}
+}

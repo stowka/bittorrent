@@ -1,0 +1,31 @@
+package torrent.messages;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+public class SendSymmetricKey extends Message {
+	private byte[] key;
+
+	public SendSymmetricKey(byte[] key) {
+		super(1 + key.length, ID.sendSymmetricKey);
+		this.key = key;
+	}
+
+	@Override
+	public void write(DataOutputStream dos) {
+		try {
+			dos.writeInt(length);
+			dos.write(id.ordinal());
+			dos.write(key);
+			dos.flush();
+		} catch (IOException e) {
+			System.out.println("erreur envoi message");
+		}
+	}
+
+	@Override
+	public void accept(MessageVisitor visitor) {
+		throw new UnsupportedOperationException();
+	}
+
+}

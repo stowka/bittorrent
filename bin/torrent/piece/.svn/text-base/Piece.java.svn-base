@@ -1,0 +1,205 @@
+package torrent.piece;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.lang.IllegalArgumentException;
+
+import torrent.messages.Request;
+import torrent.peer.PeerHandler;
+
+
+public class Piece {
+	private byte[] data;
+	private int size;
+	private byte[] sum;
+	private int index;
+	private boolean[] complete;
+	private boolean checked;
+	private List<PeerHandler> phList;
+	private List<Request> queue;
+	private int[] nbBlockRequest;
+	private int lastBlockSize;
+
+	public final static int BLOCK_SIZE = 1 << 14;
+
+	/**
+	 * CONSTRUCTEUR DE LA PIECE
+	 * 
+	 * @param index : int index de la pice
+	 * @param size : taille du tableau data (donnŽes)
+	 * @param sum : somme de controle arithmetique (SHA-1)
+	 */
+	public Piece(int index, int size, byte[] sum) {
+		this.setIndex(index);
+		this.size = size;
+		this.sum = sum;
+		this.nbBlockRequest = new int[(int) Math.ceil(size / BLOCK_SIZE)];
+		for (int i = 0; i < nbBlockRequest.length; i++) {
+			nbBlockRequest[i] = 0;
+		}
+		this.data = new byte[size];
+		this.complete = new boolean[size];
+		for (int i = 0; i < complete.length; i++) {
+			complete[i] = false;
+		}
+		this.checked = false;
+		this.lastBlockSize = (int) (size - ((Math.ceil(size / BLOCK_SIZE) - 1) * BLOCK_SIZE));
+	}
+
+
+	public int getDownloadCompleteness() {
+		int nbBlocksDownloaded = 0;
+		for (int i = 0; i < complete.length; i++) {
+			if (complete[i]) {
+				nbBlocksDownloaded++;
+			}
+		}
+		return (100 * nbBlocksDownloaded) / size;
+	}
+
+	public byte[] getData() {
+		for (int i = 0; i < complete.length; i++) {
+			if (complete[i]) {
+				return data;
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Methode pour changer les donnees stockees dans data et de le remplacer
+	 * par de nouvelles envoyees en parametre.
+	 * @param data : byte[] tableau de donnees pour une piece
+	 */
+	public void setData(byte[] data) {
+		this.data = data.clone();
+		for (int i = 0; i < complete.length; i++) {
+			complete[i] = true;
+		}
+	}
+
+	/**
+	 * METHODE POUR REMPLIR LE TABLEAU DE BYTES AVEC LES BLOCKS
+	 * LANCE LA METHODE CHECK POUR TESTER LE REMPLISSAGE
+	 * 
+	 * @param begin : int index du block reu
+	 * @param block : byte[] block de donnees reu
+	 */
+	public void feed(int begin, byte[] block) {
+		if (begin < 0 || begin > size || block.length > BLOCK_SIZE) {
+			throw new IllegalArgumentException();
+		}
+		if (begin == Math.ceil(size / BLOCK_SIZE)) {
+			for (int i = 0; i < block.length; i++) {
+				data[begin + i] = block[i];
+				complete[begin + i] = true;
+			}
+		} else if (block.length != BLOCK_SIZE) {
+			throw new IllegalArgumentException();
+		} else {
+			for (int i = 0; i < block.length; i++) {
+				data[begin + i] = block[i];
+				complete[begin + i] = true;
+			}
+		}
+		if (getDownloadCompleteness() == 100) {
+			check();
+			if (checked) {
+				for (Request r : queue) {
+					if (r.getIndex() == begin) {
+						queue.remove(r);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * METHODE DE VERIFICATION FIN DE DOWNLOAD
+	 * 
+	 * @return renvoie true si le telechargement est fini :
+	 * 		   c'est a dire si la methode getDownloadCompleteness renvoie 100.
+	 */
+	public boolean isComplete() {
+		return (getDownloadCompleteness() == 100);
+	}
+
+	/**
+	 * METHODE DE VERIFICATION DE LA SOMME DE CONTROLE
+	 * verifie d'abord que le telechargement est complet puis passe un boolean a true
+	 * si les sommes de controle sont egales.
+	 * @return renvoie true si la somme de controle est juste (l'integritŽ est
+	 *         conservŽe)
+	 */
+	public boolean check() {
+		if (checked) {
+			return true;
+		}
+		if (isComplete()) {
+			try {
+				byte[] hash = MessageDigest.getInstance("SHA").digest(data);
+				if (MessageDigest.isEqual(hash, sum)) {
+					checked = true;
+					return true;
+				} else {
+					for (int i = 0; i < complete.length; i++) {
+						data[i] = 0;
+						complete[i] = false;
+					}
+					return false;
+				}
+			} catch (NoSuchAlgorithmException e) {
+				throw new Error("No SHA support in this VM.");
+			}
+		}
+
+		return false;
+	}
+	
+	public int getLength() {
+		return size;
+	}
+
+
+	public void setIndex(int index) {
+		this.index = index;
+	}
+
+
+	public int getIndex() {
+		return index;
+	}
+	
+	public boolean getChecked() {
+		return checked;
+	}
+	
+	public void setQueue(List<PeerHandler> peerHandlerList) {
+		this.phList.addAll(peerHandlerList);
+		for (PeerHandler ph : phList) {
+			this.queue.addAll(ph.getQueueRequest());
+		}
+	}
+	
+	public void addBlockRequest(int index) {
+		this.nbBlockRequest[index]++;
+	}
+	
+	public void setMaxBlockRequest(int index) {
+		this.nbBlockRequest[index] = Integer.MAX_VALUE;
+	}
+	
+	public int[] getNbBlockRequest() {
+		return nbBlockRequest;
+	}
+	
+	public int getBlockSize() {
+		return BLOCK_SIZE;
+	}
+	
+	public int getLastBlockSize() {
+		return lastBlockSize;
+	}
+
+}

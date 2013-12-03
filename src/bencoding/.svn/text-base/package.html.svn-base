@@ -1,0 +1,12 @@
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<body>
+<h1>Code Java bencoding</h1>
+
+<p>Le code contenu dans cette section est tiré de wiki.theory.org et a été écrit par Mark Wielaard - il a été légèrement reformatté mais l'essentiel du code reste le même.</p>
+
+<p>Comme il est sous licence GPL, nous devons publier les sources modifiées, donc les voilà.</p>
+
+<p>L'API peut sembler peu confortable au début mais c'est uniquement dû aux limitations du langage Java concernant les types.</p>
+</body>
+</html>

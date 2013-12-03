@@ -1,0 +1,66 @@
+package torrent.messages;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+
+import crypto.KeyPair;
+
+public class SendRSAKey extends Message {
+	private int N;
+	private int keySize, moduleSize;
+	private byte[] key, module;
+
+	public SendRSAKey(int N, byte[] key, byte[] module) {
+		super(13 + key.length + module.length, ID.sendRSAKey);
+		this.N = N;
+		this.key = key;
+		this.keySize = key.length;
+		this.module = module;
+		this.moduleSize = module.length;
+	}
+
+	@Override
+	public void write(DataOutputStream dos) {
+		try {
+			dos.writeInt(length);
+			dos.write(id.ordinal());
+			dos.writeInt(N);
+			dos.writeInt(keySize);
+			dos.write(key);
+			dos.writeInt(moduleSize);
+			dos.write(module);
+			dos.flush();
+		} catch (IOException e) {
+			System.out.println("erreur envoi message");
+		}
+	}
+	
+	public KeyPair readData(BigInteger d, DataInputStream dis) {
+		int N, keyLength, moduleLength;
+		byte[] key, module;
+		try {
+			dis.readInt();
+			dis.readByte();
+			N = dis.readInt();
+			keyLength = dis.readInt();
+			key = new byte[keyLength];
+			dis.readFully(key);
+			moduleLength = dis.readInt();
+			module = new byte[moduleLength];
+			dis.readFully(module);
+			System.out.println("SendRSAKey lu");
+			return new KeyPair(new BigInteger(module), new BigInteger(key), d, N);
+		} catch (IOException e) {
+			System.out.println("erreur lecture fichier");
+		}
+		return null;
+	}
+
+	@Override
+	public void accept(MessageVisitor visitor) {
+		throw new UnsupportedOperationException();
+	}
+
+}

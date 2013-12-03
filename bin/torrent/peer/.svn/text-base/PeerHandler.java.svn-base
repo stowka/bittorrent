@@ -1,0 +1,325 @@
+package torrent.peer;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+
+import settings.PeerSettings;
+import torrent.Torrent;
+import torrent.messages.BitField;
+import torrent.messages.HandShake;
+import torrent.messages.Interested;
+import torrent.messages.Message;
+import torrent.messages.MessageHandler;
+import torrent.messages.MessageReader;
+import torrent.messages.Request;
+import torrent.messages.SendRSAKey;
+import torrent.piece.Piece;
+import java.lang.Thread;
+
+import crypto.KeyGenerator;
+import crypto.KeyPair;
+import crypto.RSAInputStream;
+import crypto.RSAOutputStream;
+
+/**
+ * CLASSE PEERHANDLER gère l'interaction entre le client et un pair. Ce
+ * gestionnaire envoie les messages au pair. Chaque pair possède un son propre
+ * PeerHandler par rapport au client avec qui il interagit.
+ * 
+ * @author DE GIETER-VENDE Antoine && MARGUET Alban (groupe 36)
+ * 
+ * 
+ */
+public class PeerHandler extends Thread {
+	private Torrent torrent;
+	private MessageHandler messageHandler;
+	private MessageReader messageReader;
+	private Peer peer;
+	private InetAddress ip;
+	private int port;
+	private List<Piece> pieces;
+	private List<Integer> peerPieces;
+	private List<Message> queueMessage;
+	private List<Request> queueRequest;
+	private Socket socket;
+	private DataInputStream dis;
+	private DataOutputStream dos;
+	private HandShake hs;
+	private Interested interested;
+	private BitField bf;
+	private Request req;
+	private boolean choked, peerChoked;
+	private boolean alive;
+	private PeerSettings peerSettings;
+	private KeyPair keyPair;
+
+	/**
+	 * CONSTRUCTEUR (Client se connecte à un pair)
+	 * 
+	 * @param torrent
+	 *            : Torrent concernant le fichier que l'on échange.
+	 * @param peer
+	 *            : Peer, pair du torrent associé à ce PeerHandler.
+	 */
+	public PeerHandler(Torrent torrent, Peer peer) {
+		this.queueMessage = new ArrayList<Message>();
+		this.keyPair = KeyGenerator.generateRSAKeyPair(128);
+		this.interested = null;
+		this.queueRequest = new ArrayList<Request>(10);
+		this.peer = peer;
+		this.choked = true;
+		this.peerChoked = true;
+		this.alive = true;
+		this.torrent = torrent;
+		this.pieces = new ArrayList<Piece>();
+		this.pieces.addAll(torrent.getPieces());
+		this.peerPieces = new ArrayList<Integer>();
+		System.out.println("PH created");
+		this.start();
+		this.peerSettings = new PeerSettings();
+	}
+
+	/**
+	 * CONSTRUCTEUR (un pair se connecte au client)
+	 * 
+	 * @param torrent
+	 *            : Torrentconcernant le fichier que l'on échange.
+	 * @param peer
+	 *            : Peer, pair du torrent associé à ce PeerHandler.
+	 * @param socket
+	 *            : Socket contenant les paramètres de la connexion entre le
+	 *            pair et le client.
+	 */
+	public PeerHandler(Torrent torrent, Socket socket) {
+		this.torrent = torrent;
+		this.socket = socket;
+	}
+
+	/**
+	 * 
+	 * processus qui créé un socket puis envoie un HandShake et enfin exécute en
+	 * boucle la gestion des messages :
+	 * 
+	 * 
+	 */
+	public void run() {
+		System.out.println("run");
+
+		if (socket == null && choked) {
+			ip = peer.getIp();
+			port = peer.getPort();
+			try {
+				System.out.println("ip : " + ip + " port : " + port);
+				socket = new Socket(ip, port);
+				dis = new DataInputStream(socket.getInputStream());
+				dos = new DataOutputStream(socket.getOutputStream());
+				System.out.println("socket créé et rempli");
+
+				// HANDSHAKE !
+				hs = new HandShake(torrent);
+				hs.writeData(dos);
+				System.out.println("Handshake sent");
+
+				if (hs.readData(dis) == null) {
+					System.out.println("handshake reçu null");
+					socket.close();
+					return;
+				} else {
+					System.out.println("handshake reçu");
+					if (hs.getCrypt() && peerSettings.encryptionEnabled()) {
+						SendRSAKey srsak = new SendRSAKey(keyPair.getN(),
+								keyPair.get_e().toByteArray(), keyPair.get_n()
+										.toByteArray());
+						srsak.write(dos);
+						KeyPair keyPairPeer = srsak.readData(null, dis);
+						dis = new DataInputStream(new RSAInputStream(keyPair,
+								dis));
+						dos = new DataOutputStream(new RSAOutputStream(
+								keyPairPeer, dos));
+						System.out.println("encryption");
+					}
+				}
+				// HANDSHAKE
+
+				// BITFIELD !
+				byte[] bitfield = new byte[(int) Math.ceil(pieces.size() / 8)];
+				System.out.println((int) Math.ceil(pieces.size() / 8));
+				byte b = 0;
+				for (int i = 0; i < pieces.size(); i++) {
+					if (pieces.get(i).getDownloadCompleteness() == 100) {
+						System.out.println("piece presente");
+						b += 1;
+						b = (byte) (b << 1);
+					}
+					if (i % 8 == 0 && i != 0 || i == pieces.size() - 1) {
+						System.out.println("switching");
+						System.out.println((int) Math.floor(i / 8) + " " + i);
+						bitfield[(int) Math.floor(i / 8)] = b;
+						b = 0;
+					}
+				}
+				bf = new BitField(bitfield);
+				System.out.println("Bitfield créé");
+				bf.write(dos);
+				System.out.println("Bitfield écrit");
+				// BITFIELD
+
+				messageReader = new MessageReader(dis);
+				messageHandler = new MessageHandler(this);
+				this.torrent.getPieceManager().setLoading(true);
+				while (true) {
+					/*
+					 * if ((System.currentTimeMillis() - messageHandler
+					 * .getLastKeepAlive()) > 300000) { alive = false; }
+					 */
+
+					if (!alive) {
+						System.out.println("alive false");
+						socket.close();
+						return;
+					} else {
+						if (dis.available() != 0) {
+							System.out.println("message present dans dis");
+							messageReader.readMessage().accept(messageHandler);
+						} else {
+							Thread.sleep(600);
+							continue;
+						}
+						/*
+						 * if (System.currentTimeMillis() >= time + 120000) {
+						 * time = System.currentTimeMillis(); KeepAlive ka = new
+						 * KeepAlive(); ka.write(dos); }
+						 */
+
+						if (choked) {
+							interested = new Interested();
+							interested.write(dos);
+							System.out.println("interested créé et ecrit");
+						} else {
+							Piece interestPiece = null;
+							if (interestPiece == null || interestPiece.check()) {
+								interestPiece = torrent.getPieceManager()
+										.receivePiece(peerPieces);
+								peerPieces.remove(0);
+								System.out.println("peerPieces size : "
+										+ peerPieces.size());
+							}
+
+							int index = interestPiece.getIndex();
+							int indexBlockMinRequest = Integer.MAX_VALUE;
+
+							for (int i = 0; i < interestPiece
+									.getNbBlockRequest().length; i++) {
+								if (interestPiece.getNbBlockRequest()[i] < indexBlockMinRequest) {
+									indexBlockMinRequest = interestPiece
+											.getNbBlockRequest()[i];
+								}
+							}
+							int length = 0;
+							int begin = indexBlockMinRequest;
+							if (begin == interestPiece.getLastBlockSize()) {
+								length = interestPiece.getLastBlockSize();
+							} else {
+								length = interestPiece.getBlockSize();
+							}
+
+							int indexMinValue = 0;
+							for (int i = 0; i < interestPiece
+									.getNbBlockRequest().length; i++) {
+								if (interestPiece.getNbBlockRequest()[i] < interestPiece
+										.getNbBlockRequest()[indexMinValue]) {
+									indexMinValue = i;
+								}
+							}
+							System.out.println("indexMinValue = "
+									+ indexMinValue + " MAX INT = "
+									+ Integer.MAX_VALUE);
+							if (indexMinValue < Integer.MAX_VALUE) {
+								req = new Request(index, begin, length);
+								interestPiece.addBlockRequest(indexMinValue);
+								queueRequest.add(req);
+								addMessageQueue(req);
+								System.out.println("request sent on block "
+										+ begin);
+							}
+
+							queueRequest.get(0).write(dos);
+							System.out.println("request written");
+							queueRequest.remove(0);
+							// queueMessage.remove(0).write(dos);
+						}
+					}
+				}
+			} catch (IOException e) {
+				System.out.println("IOException");
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				System.out.println("InterruptedException");
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * 
+	 * @return le torrent auquel on s'intéresse.
+	 */
+	public Torrent getTorrent() {
+		return torrent;
+	}
+
+	/**
+	 * 
+	 * @param choked
+	 *            : modifie la valeur du boolean choked selon si le pair nous
+	 *            envoie un message Choke.
+	 */
+	public void setChoked(boolean choked) {
+		this.choked = choked;
+	}
+
+	/**
+	 * 
+	 * @param peerChoked
+	 *            : modifie la valeur du boolean peerChoked selon si nous avons
+	 *            choke ou non le pair.
+	 */
+	public void setPeerChoked(boolean peerChoked) {
+		this.peerChoked = peerChoked;
+	}
+
+	/**
+	 * 
+	 * @param alive
+	 *            : modifie la valeur du boolean alive par l'envoi de messages
+	 *            KeepAlive.
+	 */
+	public void setAlive(boolean alive) {
+		this.alive = alive;
+	}
+
+	public boolean getAlive() {
+		return this.alive;
+	}
+
+	public void addMessageQueue(Message message) {
+		this.queueMessage.add(message);
+	}
+
+	public List<Request> getQueueRequest() {
+		return queueRequest;
+	}
+
+	public void setPeerPieces(List<Integer> pieces) {
+		this.peerPieces.addAll(pieces);
+	}
+
+	public boolean getPeerChoked() {
+		return peerChoked;
+	}
+}

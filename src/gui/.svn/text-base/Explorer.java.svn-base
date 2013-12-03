@@ -1,0 +1,32 @@
+package gui;
+
+import java.awt.Color;
+import java.awt.GridLayout;
+
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.border.Border;
+
+@SuppressWarnings("serial")
+public class Explorer extends JPanel {
+	private Border border;
+	
+	public Explorer(Color bg) {
+		this.setBackground(bg);
+		this.border = BorderFactory.createEtchedBorder();
+		this.setLayout(new GridLayout(16, 1));
+		this.setBorder(border);
+	}
+	
+	public void addTorrent(String torrent) {
+		
+	}
+	
+//	public void paint(Graphics g) {
+//		super.paint(g);
+//		g.setColor(Color.GREEN);
+//		g.drawRect(0, 0, getWidth(), getHeight());
+//		g.fillRect(0, 0, getWidth(), getHeight());
+//	}
+	
+}

@@ -1,0 +1,43 @@
+package gui;
+
+import java.awt.GridLayout;
+
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextPane;
+
+@SuppressWarnings("serial")
+public class EmptyDownload extends JPanel {
+	private JProgressBar torrent, piece;
+	private JTextPane textTorrent, textPiece;
+
+	public EmptyDownload() {
+		this.textTorrent = new JTextPane();
+		this.textPiece = new JTextPane();
+		this.textTorrent.setText("No torrent is loaded");
+		this.textTorrent.setEditable(false);
+		this.textTorrent.setFocusable(false);
+		this.textPiece.setText("No torrent is loaded");
+		this.textPiece.setEditable(false);
+		this.textPiece.setFocusable(false);
+		
+		this.torrent = new JProgressBar();
+		this.torrent.setFocusable(false);
+		this.piece = new JProgressBar();
+		this.piece.setFocusable(false);
+		
+		this.torrent = new JProgressBar(0, 100);
+		this.torrent.setValue(0);
+		this.torrent.setStringPainted(true);
+		
+		this.piece = new JProgressBar(0, 100);
+		this.piece.setValue(0);
+		this.piece.setStringPainted(true);
+		
+		this.setLayout(new GridLayout(16, 1));
+		this.add(textTorrent);
+		this.add(torrent);
+		this.add(textPiece);
+		this.add(piece);
+	}
+}

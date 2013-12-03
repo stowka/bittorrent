@@ -1,0 +1,166 @@
+package torrent.piece;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import torrent.Torrent;
+
+/**
+ * CLASSE PIECEMANAGER : modelise une gestionnaire de piece qui sera cree par
+ * l'objet Torrent afin de gerer le priorite de telechargement de chaque piece
+ * que l'on a besoin de telecharger.
+ * 
+ * 
+ * @author DE GIETER-VENDE Antoine && MARGUET Alban (groupe 36)
+ * 
+ * 
+ */
+public class PieceManager extends Thread {
+	private Torrent torrent;
+	private final int N = 100;
+	private List<Piece> piecesOfInterest;
+	private List<Piece> allPieces;
+	private int size;
+	private double avancement;
+	private boolean filePresent, complete, loading;
+
+	/**
+	 * 
+	 * @param allPieces
+	 *            : Liste de toutes les pieces du fichier.
+	 * @param filePresent
+	 *            : Boolean indiquant si le fichier est deja present
+	 *            (telecharge, verifie).
+	 */
+	public PieceManager(Torrent torrent, boolean filePresent) {
+		this.torrent = torrent;
+		this.filePresent = filePresent;
+		this.piecesOfInterest = new ArrayList<Piece>();
+		this.allPieces = new ArrayList<Piece>();
+		this.allPieces.addAll(this.torrent.getPieces());
+		this.size = allPieces.size();
+		this.complete = false;
+		this.avancement = 0.0;
+	}
+
+	/**
+	 * processus qui lance updatePriorities (MˆJ des piecesofInterest) toutes
+	 * les 3 secondes.
+	 * 
+	 */
+	public void run() {
+		loading = true;
+		while (loading) {
+			updatePriorities();
+			if (complete) {
+				loading = false;
+				torrent.writeToFile();
+				return;
+			}
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				System.out.println("Interrupted");
+			}
+		}
+		System.out.println("iscomplete");
+	}
+
+	/**
+	 * 
+	 * @return piecesOfInterest: la liste des pieces qui ne sont pas
+	 *         telechargees que le gestionnaire de pieces met a jour
+	 *         regulierement en generant aleatoirement certaines d'entre elles.
+	 */
+	public synchronized List<Piece> updatePriorities() {
+		if (filePresent) {
+			for (int i = 0; i < piecesOfInterest.size(); i++) {
+				piecesOfInterest.remove(i);
+			}
+			System.out.println("File already downloaded");
+			return piecesOfInterest;
+		} else {
+			System.out.println("file not present");
+			System.out.println("allPieces size : " + allPieces.size());
+			System.out.println("piecesOfInterest size : " + piecesOfInterest.size());
+			Collections.shuffle(allPieces);
+			System.out.println("shuffle");
+			for (int i = piecesOfInterest.size(); i > 0; i--) {
+				piecesOfInterest.remove(i - 1);
+			}
+			for (int i = 0; i < allPieces.size() && i < N; i++) {
+				piecesOfInterest.add(allPieces.get(i));
+			}
+			for (int i = 0; i < allPieces.size() && i < N; i++) {
+				allPieces.remove(i);
+			}
+			if (torrent.isComplete()) {
+				System.out.println("is complete : All pieces = 0");
+				complete = true;
+				avancement = 100;
+			} else {
+				avancement = ((size - allPieces.size()) * 100 / size);
+				System.out.println("avancement : " + avancement);
+				if (avancement == 100) {
+					complete = true;
+				}
+			}
+			System.out.println("return piecesOfInterest");
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return piecesOfInterest;
+		}
+	}
+
+	/**
+	 * 
+	 * @return complete: boolean indiquant si le fichier est complet (true).
+	 */
+	public boolean getComplete() {
+		return complete;
+	}
+
+	/**
+	 * 
+	 * @return avancement: le "double" indiquant l'avancement du telechargement.
+	 */
+	public double getAvancement() {
+		return avancement;
+	}
+
+	public Piece receivePiece(List<Integer> list) {
+		System.out.println("(receivepiece) piecesOfInterest size : " + piecesOfInterest.size());
+		//CODE INI
+//		for (int i = 0; i < list.size(); i++) {
+//			for (int j = 0; j < piecesOfInterest.size(); j++) {
+//				if (piecesOfInterest.get(j).getIndex() == list.get(i)) {
+//					System.out.println("return piece of index : " + i);
+//					return piecesOfInterest.get(j);
+//				}
+//			}
+//		}
+//		System.out.println("return interest piece null");
+//		return null;
+		
+		//MODIF
+		Piece p = piecesOfInterest.get(list.get(0));
+		piecesOfInterest.remove(list.get(0));
+		return p;
+	}
+	
+	public int getAllPiecesSize() {
+		return allPieces.size();
+	}
+	
+	public void setLoading(boolean loading) {
+		this.loading = loading;
+		if(loading) {
+			this.start();
+		}
+	}
+}

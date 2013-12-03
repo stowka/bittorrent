@@ -1,0 +1,146 @@
+import org.junit.Assert;
+import org.junit.Test;
+import torrent.Torrent;
+import torrent.piece.Piece;
+import torrent.tracker.TrackerInfo;
+
+import java.io.*;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+public class TorrentTest {
+
+    @Test
+    public void testTorrentContents() throws IOException {
+        Torrent torrent = new Torrent("data/LePetitPrince-local.torrent");
+        //torrent.massAnnounce();
+        
+        assertEquals("st_exupery_le_petit_prince.pdf", torrent.getMetaInfo().getName());
+        assertEquals("Le petit prince est l'oeuvre la plus connue d'Antoine de Saint-Exupery", torrent.getMetaInfo().getComment());
+        assertEquals("Transmission/2.20b3 (11793)", torrent.getMetaInfo().getAuthor());
+        //assertEquals(40, torrent.getPieceCount());
+
+        List<Piece> pieces = torrent.getPieces();
+        assertNotNull(pieces);
+        assertFalse(pieces.isEmpty());
+        assertEquals(40, pieces.size());
+        //assertEquals(40, torrent.getPieceCount());
+
+        List<TrackerInfo> trackers = torrent.getTrackerInfos();
+        assertNotNull(trackers);
+        assertFalse(trackers.isEmpty());
+        assertEquals(1, trackers.size());
+        //assertEquals("http://icsinsrv1.epfl.ch:6969/", torrent.getMetaInfo().getAnnounceList().get(0)); //trackers.get(0).getUrl()
+        assertEquals("http://127.0.0.1:6969/", torrent.getMetaInfo().getAnnounceList().get(0).getList().get(0).getString()); //trackers.get(1).getUrl()
+    }
+
+    @Test
+    public void testReadFromFileGivenDataFile() throws IOException {
+        Torrent torrent = new Torrent("data/LePetitPrince.torrent", new File("data/st_exupery_le_petit_prince.pdf"), false);
+        torrent.setWritingEnabled(false);
+
+        assertTrue(torrent.isWritten());
+
+        assertEquals("All pieces must have been read from the data file", 100.0, torrent.getCompleteness(), 0.0);
+       // assertTrue("All pieces must have been read from the data file", torrent.isComplete());
+    }
+
+    @Test
+    public void testReadFromFileNoDataFile() throws IOException {
+        Torrent torrent = new Torrent("data/LePetitPrince.torrent", null, false);
+        torrent.setWritingEnabled(false);
+
+        assertFalse(torrent.isWritten());
+
+        assertEquals("No pieces should have been read", 0.0, torrent.getCompleteness(), 0.0);
+       // assertFalse("No pieces should have been read", torrent.isComplete());
+    }
+
+    @Test
+    public void testReadFromFileWrongDataFile() throws IOException {
+        Torrent torrent = new Torrent("data/LePetitPrince.torrent", new File("data/LePetitPrince.torrent"), false);
+        torrent.setWritingEnabled(false);
+
+        assertFalse(torrent.isWritten());
+
+        assertEquals("No pieces should have been read", 0.0, torrent.getCompleteness(), 0.0);
+        //assertFalse("No pieces should have been read", torrent.isComplete());
+    }
+
+    @Test
+	public void testWriteToFile() throws IOException, NoSuchAlgorithmException {
+		Torrent torrent = new Torrent("data/LePetitPrince.torrent");
+		torrent.setWritingEnabled(true);
+
+		int pieceLength = torrent.getPieces().get(0).getLength();
+		int pieceCount = torrent.getPieces().size();
+
+		List<Integer> indices = new ArrayList<Integer>();
+		for(int i = 0; i < pieceCount; i++) {
+			indices.add(i);
+		}
+		Collections.shuffle(indices);
+		Assert.assertEquals(pieceCount, indices.size());
+		Assert.assertEquals(pieceLength, 1 << 15);
+
+		RandomAccessFile file = new RandomAccessFile("data/st_exupery_le_petit_prince.pdf", "r");
+		for(int index: indices) {
+			Piece piece = torrent.getPieces().get(index);
+
+			// do the second block first, if any
+			int secondBlockSize = piece.getLength() - Piece.BLOCK_SIZE;
+			if(secondBlockSize > 0) {
+				file.seek(index * pieceLength + Piece.BLOCK_SIZE);
+				byte[] block = new byte[secondBlockSize];
+				file.read(block);
+				piece.feed(Piece.BLOCK_SIZE, block);
+			}
+
+			// now do the first block
+			{
+				int firstBlockSize = Math.min(Piece.BLOCK_SIZE, piece.getLength());
+				file.seek(index * pieceLength);
+				byte[] block = new byte[firstBlockSize];
+				file.read(block);
+				piece.feed(0, block);
+			}
+		}
+		file.close();
+
+
+        File outputFile = File.createTempFile("test_st_exupery_le_petit_prince", ".pdf");
+        outputFile.deleteOnExit();
+
+        torrent.writeToFile(outputFile);
+        assertTrue("The written file must be identical to the data file", checkMD5checksum("0D41D08C0D908F000B2040E9080090980EC0F8427E", outputFile));
+
+	}
+
+    private boolean checkMD5checksum(String original, File file) throws NoSuchAlgorithmException, IOException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        InputStream is = new FileInputStream(file);
+        try {
+            is = new DigestInputStream(is, md);
+        } finally {
+            is.close();
+        }
+
+        return original.equals(toHexString(md.digest()));
+    }
+
+    private String toHexString(byte[] input){
+        StringBuilder sb = new StringBuilder();
+        for (byte b : input) {
+            if(b < 16)
+                sb.append("0");
+            sb.append(Integer.toHexString(0xFF & b).toUpperCase());
+        }
+        return sb.toString();
+    }
+}

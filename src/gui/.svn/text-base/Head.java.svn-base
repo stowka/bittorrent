@@ -1,0 +1,44 @@
+package gui;
+
+import java.awt.Color;
+import java.awt.GridLayout;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.border.Border;
+
+@SuppressWarnings("serial")
+public class Head extends JPanel {
+	private JTextArea textTitle;
+	private Border border;
+	private boolean loading;
+
+	public Head(Color bg) {
+		this.setBackground(bg);
+		this.border = BorderFactory.createEtchedBorder();
+		this.textTitle = new JTextArea(
+				"Projet de Technologie de l'information -"
+						+ " Client BitTorrent -"
+						+ " Groupe 36 (203823 et 204087)");
+		this.textTitle.setLineWrap(true);
+		this.textTitle.setBackground(Color.LIGHT_GRAY);
+		this.textTitle.setForeground(Color.BLACK);
+		this.textTitle.setBorder(border);
+		this.textTitle.setEditable(false);
+		this.textTitle.setFocusable(false);
+		this.textTitle.setRows(1);
+		this.textTitle.setColumns(106);
+		this.setLayout(new GridLayout(1, 1));
+
+	}
+	
+	public boolean getLoading() {
+		return loading;
+	}
+
+	/*
+	 * public void paint(Graphics g) { super.paint(g); g.setColor(Color.BLACK);
+	 * g.drawRect(0, 0, 1276, 378); g.fillRect(0, 0, 1276, 378);
+	 * g.setColor(Color.WHITE); g.drawString("", 0, 0); }
+	 */
+}

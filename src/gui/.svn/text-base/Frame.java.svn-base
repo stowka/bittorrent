@@ -1,0 +1,325 @@
+package gui;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.ImageIcon;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
+
+import torrent.Torrent;
+
+@SuppressWarnings("serial")
+public class Frame extends JFrame implements WindowListener, KeyListener,
+		MouseListener, FocusListener {
+	private JMenuBar menuBar;
+	private JMenu file, tools;
+	private JMenuItem open, close, changeSavingPath, credits;
+	private JCheckBox encrypt;
+	private Head head;
+	private Explorer explorer;
+	private Download download;
+	private InfoTorrent infoTorrent;
+	private Console console;
+	private JPanel panel;
+	private JSplitPane explorerDownload;
+	private JTabbedPane tabs;
+	private boolean encryption;
+	private Torrent torrent;
+	private List<Torrent> torrentList;
+	private List<String> pathList;
+	private String savingPath;
+	private Color colorMenu;
+	private Color bg;
+	private int selected;
+
+	public Frame() {
+		// new Color(int red, int green, int blue)
+		this.bg = new Color(196, 222, 255);
+		this.tabs = new JTabbedPane();
+		this.tabs.addMouseListener(this);
+		this.colorMenu = Color.BLUE;
+		this.pathList = new ArrayList<String>();
+		this.torrentList = new ArrayList<Torrent>();
+		this.savingPath = System.getProperty("user.home") + "/Downloads" + File.separator;;
+		this.setTitle("203823 & 204087 - itp36");
+		this.setExtendedState(JFrame.MAXIMIZED_BOTH);
+		this.setBackground(Color.WHITE);
+		this.panel = new JPanel();
+
+		this.setContentPane(panel);
+
+		this.menuBar = new JMenuBar();
+		this.file = new JMenu("File");
+		this.tools = new JMenu("Tools");
+		this.open = new JMenuItem("Open");
+		this.open.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+		this.changeSavingPath = new JMenuItem("Saving Path");
+		this.credits = new JMenuItem("Credits");
+		this.open.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (pathList.size() < 10) {
+					JFileChooser fc = new JFileChooser();
+					fc.addChoosableFileFilter(new DotTorrentFilter());
+					int returnVal = fc.showOpenDialog(panel);
+					if (returnVal == JFileChooser.APPROVE_OPTION) {
+						String path = fc.getSelectedFile().getPath();
+						System.out.println(path);
+						console.addLog(path + " added");
+						pathList.add(path);
+						infoTorrent.addTorrent(path);
+						torrent = new Torrent(path);
+						torrent.setSavingPath(savingPath);
+						panel.remove(download);
+						download = new Download(bg, torrent);
+						tabs.add(download.getTitle(), download);
+						selected = pathList.size() - 1;
+						tabs.setSelectedIndex(selected);
+						panel.add("Center", tabs);
+						torrentList.add(torrent);
+					}
+				} else {
+					console.addLog("you can't load more than 10 torrents at the same time");
+				}
+				
+			}
+		});
+		this.close = new JMenuItem("Close");
+		this.close.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_MASK));
+		this.close.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				generateCloseConfirmation();
+			}
+		});
+		this.encrypt = new JCheckBox("Encrypt");
+		this.encrypt.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				encryption = encrypt.isSelected();
+				if (encryption) {
+					console.addLog("encryption enabled");
+				} else {
+					console.addLog("encryption disabled");
+				}
+			}
+		});
+		this.changeSavingPath.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser fc = new JFileChooser();
+				fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				int returnVal = fc.showOpenDialog(panel);
+				if (returnVal == JFileChooser.APPROVE_OPTION) {
+					String path = fc.getSelectedFile().getPath();
+					console.addLog("saving path changed to " + path);
+					savingPath = path;
+				}
+			}
+		});
+		this.credits.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				console.addLog("watching credits");
+				String[] buttons = { "D'accord", "J'accepte" };
+				String cred = "Projet de Technologie de l'information\n"
+						+ "Client BitTorrent\n"
+						+ "CrŽŽ par :\nVENDE Antoine et MARGUET Alban\n\n"
+						+ "Votre soutien est le bienvenu :\n"
+						+ "Comme par exemple un don de 1000 CHFÉ par exemple\n"
+						+ "Voulez-vous faire le don?\n";
+
+				JOptionPane.showOptionDialog(new JFrame(), cred, "Credits",
+						JOptionPane.OK_OPTION, JOptionPane.INFORMATION_MESSAGE,
+						new ImageIcon("data/icons/credits.png"), buttons,
+						buttons[0]);
+			}
+		});
+		
+		this.explorerDownload = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.explorer, this.download);
+		this.panel.add(explorerDownload);
+		
+		this.file.add(open);
+		this.file.add(close);
+		this.file.setBackground(colorMenu);
+		this.tools.add(encrypt);
+		this.tools.addSeparator();
+		this.tools.add(changeSavingPath);
+		this.tools.add(credits);
+		this.tools.setBackground(colorMenu);
+
+		this.menuBar.add(file);
+		this.menuBar.add(tools);
+		this.menuBar.setBackground(colorMenu);
+		this.menuBar.setForeground(Color.BLACK);
+
+		this.setJMenuBar(menuBar);
+
+		this.head = new Head(bg);
+		this.explorer = new Explorer(bg);
+		this.explorer.addMouseListener(this);
+		this.download = new Download(bg);
+		this.infoTorrent = new InfoTorrent(bg);
+		this.console = new Console(bg);
+
+		this.panel.setBackground(bg);
+		this.panel.setLayout(new BorderLayout(5, 5));
+		this.panel.add("North", head);
+		this.panel.add("West", explorer);
+		this.panel.add("Center", download);
+		this.panel.add("East", infoTorrent);
+		this.panel.add("South", console);
+
+		console.addLog("start");
+
+		this.addWindowListener(this);
+
+		this.setLocationRelativeTo(null);
+		this.setSize(this.getWidth(), this.getHeight());
+
+		this.setVisible(true);
+		console.addLog("frame width " + this.getWidth() + "\nframe height "
+				+ this.getHeight());
+	}
+
+	public static void main(String[] argv) {
+		new Frame();
+	}
+
+	@Override
+	public void windowActivated(WindowEvent e) {
+	}
+
+	@Override
+	public void windowClosed(WindowEvent e) {
+	}
+
+	@Override
+	public void windowClosing(WindowEvent e) {
+		generateCloseConfirmation();
+	}
+
+	@Override
+	public void windowDeactivated(WindowEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void windowDeiconified(WindowEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void windowIconified(WindowEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void windowOpened(WindowEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+
+	}
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		this.selected = this.tabs.getSelectedIndex();
+		this.infoTorrent.addTorrent(pathList.get(selected));
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+
+	}
+	
+//	public void paint (Graphics g) {
+//		super.paint(g);
+//		GradientPaint gp = new GradientPaint(1, 1, Color.CYAN, 1, 1, Color.WHITE);
+//		g.setColor(Color.BLUE);
+//		g.drawRect(0, 0, this.getWidth(), this.getHeight());
+//		g.fillRect(0, 0, this.getWidth(), this.getHeight());
+//	}
+
+	public void generateCloseConfirmation() {
+		console.addLog("close?");
+		String[] buttons = { "YES", "NO" };
+		String title = "Closing confirmation";
+		String question = "Do you really want to close the bittorrent client?";
+		int confirm = JOptionPane.showOptionDialog(new JFrame(), question,
+				title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+				new ImageIcon("data/icons/confirm-closing-icon.png"), buttons,
+				buttons[1]);
+		if (confirm == 0) {
+			console.addLog("closing");
+			this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			System.exit(0);
+		} else {
+			console.addLog("closing canceled");
+			this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		}
+	}
+
+	@Override
+	public void focusGained(FocusEvent e) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void focusLost(FocusEvent e) {
+		// TODO Auto-generated method stub
+	}
+}

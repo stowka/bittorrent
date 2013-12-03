@@ -1,0 +1,78 @@
+package gui;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.border.Border;
+
+@SuppressWarnings("serial")
+public class Console extends JPanel implements Runnable {
+	private JTextArea textConsole;
+	// private JTextArea textTitle;
+	private Border border;
+	private List<String> log;
+	private String consoleLog;
+	private int index;
+
+	public Console(Color bg) {
+		this.setBackground(bg);
+		this.log = new ArrayList<String>();
+		this.consoleLog = "";
+		this.border = BorderFactory.createEtchedBorder();
+		this.textConsole = new JTextArea("start\n");
+		this.textConsole.setBackground(Color.WHITE);
+		this.textConsole.setForeground(Color.BLUE);
+
+		// this.textConsole.setFont(new Font("TimesRoman", Font.PLAIN, 12));
+		this.textConsole.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
+		this.textConsole.setBorder(border);
+		this.textConsole.setEditable(false);
+		this.textConsole.setFocusable(false);
+		this.textConsole.setRows(13);
+		this.textConsole.setColumns(115);
+
+		// this.textTitle = new JTextArea("LOG CONSOLE :");
+		// this.textTitle.setColumns(105);
+		// this.textTitle.setEditable(false);
+		// this.textTitle.setFocusable(false);
+
+		// this.add(textTitle);
+		this.add(textConsole);
+		this.add(new JScrollPane(textConsole), BorderLayout.CENTER);
+		this.start();
+	}
+
+	@Override
+	public void run() {
+		while (true) {
+			if (log.size() - 10 < 0) {
+				this.index = 0;
+			} else {
+				this.index = log.size() - 10;
+			}
+			for (int i = this.index; i < log.size(); i++) {
+				consoleLog += log.get(i);
+				consoleLog += "\n";
+			}
+			this.textConsole.setText(consoleLog);
+			consoleLog = "";
+		}
+
+	}
+
+	public void addLog(String actual) {
+		log.add(actual);
+	}
+
+	public void start() {
+		Thread thread = new Thread(this);
+		thread.start();
+	}
+}

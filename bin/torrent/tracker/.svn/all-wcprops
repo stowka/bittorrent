@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/itp-1011-36/!svn/ver/37/trunk/itp/src/torrent/tracker
+END
+TorrentHash.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/itp-1011-36/!svn/ver/2/trunk/itp/src/torrent/tracker/TorrentHash.java
+END
+AnnounceInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/itp-1011-36/!svn/ver/27/trunk/itp/src/torrent/tracker/AnnounceInfo.java
+END
+TrackerInfo.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/itp-1011-36/!svn/ver/37/trunk/itp/src/torrent/tracker/TrackerInfo.java
+END

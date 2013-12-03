@@ -1,0 +1,40 @@
+package crypto;
+
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+
+public class RSAInputStream extends InputStream {
+	private KeyPair keyPair;
+	private DataInputStream is;
+	
+	public RSAInputStream(KeyPair keyPair, DataInputStream is) {
+		this.keyPair = keyPair;
+		this.is = is;
+	}
+
+	@Override
+	public int read() throws IOException {
+		BigInteger bi = BigInteger.valueOf(is.read() & 0xFF);
+		return keyPair.decrypt(bi).intValue();
+	}
+
+	@Override
+	public void close() throws IOException {
+		is.close();
+	}
+	
+	
+	
+	
+	
+	/*@Override
+	public int read(byte[] b) throws IOException {
+		BigInteger bi;
+		is.read(b);
+		bi = new BigInteger(b);
+		return bi.intValue();
+	}*/
+
+}

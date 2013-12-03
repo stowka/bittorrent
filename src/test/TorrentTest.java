@@ -1,0 +1,10 @@
+package test;
+
+import torrent.Torrent;
+
+public class TorrentTest {
+	public static void main(String[] args) {
+		Torrent torrent = new Torrent("data/LePetitPrince-local.torrent", 8888);
+		torrent.massAnnounce(100);
+	}
+}

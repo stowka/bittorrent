@@ -1,0 +1,20 @@
+package settings;
+
+public class PeerSettings {
+	int rsaKeyLength;
+	int symmetricKeyLength;
+
+	public PeerSettings() {
+		this.rsaKeyLength = -1;
+		this.symmetricKeyLength = -1;
+	}
+	
+	public boolean encryptionEnabled() {
+		if (rsaKeyLength != -1 && symmetricKeyLength != -1) {
+			this.rsaKeyLength = 128;
+			this.symmetricKeyLength = 128;
+			return true;
+		}
+		return false;
+	}
+}
